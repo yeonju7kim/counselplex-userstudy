@@ -114,9 +114,10 @@ function renderIntro() {
       <h2>What you'll do</h2>
       <ol>
         <li>You will hear <strong>${SAMPLES.length} short conversation snippets</strong> (~30–60 sec each).</li>
-        <li>Each snippet ends with two candidate counselor responses (A and B).</li>
-        <li>Choose which response is <strong>better overall</strong>: more empathic, more helpful, or feels more like a real counselor.</li>
-        <li>Both responses use the <strong>same voice</strong> — please judge by <em>content, timing, and responsiveness</em>, not voice quality.</li>
+        <li>Each snippet contains a conversation between a <strong>seeker</strong> (the person seeking support, often a male voice) and a <strong>counselor</strong> (the female voice).</li>
+        <li>Each snippet ends with two candidate <strong>counselor (female voice) responses</strong> labeled A and B.</li>
+        <li>Your task: judge which counselor response is <strong>better overall</strong> — more empathic, more helpful, more responsive, or more like a real counselor would say.</li>
+        <li>Focus on <strong>what the counselor (female voice) is saying</strong>: content, timing, how well she responds to the seeker. <em>Both A and B use the same voice</em>, so voice quality is not the focus.</li>
         <li>Optionally provide a brief reason for your choice.</li>
       </ol>
       <p class="note">Estimated time: <strong>30–45 minutes</strong>. Your responses are anonymous and used only for academic research.</p>
@@ -171,7 +172,7 @@ function renderSample() {
         <audio controls preload="metadata" src="audio_ab/${sid}/B.wav"></audio>
       </div>
 
-      <h2>Which response is better overall?</h2>
+      <h2>Which counselor (female voice) response is better overall?</h2>
       <div class="choice">
         <label><input type="radio" name="choice" value="A" ${r.choice==='A'?'checked':''}>A is better</label>
         <label><input type="radio" name="choice" value="B" ${r.choice==='B'?'checked':''}>B is better</label>
@@ -222,7 +223,28 @@ function back() {
   window.scrollTo(0,0);
 }
 
-function renderDone() {
+// Web3Forms access key — emails delivered to yeonju7.kim@gmail.com
+const WEB3FORMS_KEY = "21ee32f6-3bd9-47da-9578-cf127ed8c956";
+
+async function autoSubmit(out) {
+  if (WEB3FORMS_KEY === "REPLACE_WITH_YOUR_KEY") return null;
+  try {
+    const r = await fetch("https://api.web3forms.com/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({
+        access_key: WEB3FORMS_KEY,
+        subject: `CounselPlex study — ${out.participant.name || 'anonymous'}`,
+        from_name: out.participant.name || "Anonymous participant",
+        email: out.participant.email || "anonymous@example.com",
+        message: JSON.stringify(out, null, 2),
+      })
+    });
+    return r.ok;
+  } catch (e) { return false; }
+}
+
+async function renderDone() {
   const out = {
     participant: state.participant,
     started_at: state.startedAt,
@@ -233,23 +255,40 @@ function renderDone() {
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const fname = `userstudy_${(state.participant.name||'anon').replace(/[^a-zA-Z0-9]/g,'_')}_${Date.now()}.json`;
-  // also build mailto body (truncated if too long)
-  const mailBody = encodeURIComponent('Please find my user study responses attached, or pasted below:\n\n' + json);
+  const mailBody = encodeURIComponent('Please find my user study responses pasted below:\n\n' + json);
+
+  // first render loading state, then try auto-submit, then update banner
   app.innerHTML = `
     <div class="card">
       <h1>✓ Thank you!</h1>
-      <p>You completed all ${SAMPLES.length} samples. Please <strong>send your responses</strong> using one of these options:</p>
-      <h2>Option 1 — Download and email</h2>
-      <p>Download the file below, then email it as an attachment to the researcher.</p>
-      <p><a href="${url}" download="${fname}"><button>📥 Download my responses (.json)</button></a></p>
-      <h2>Option 2 — Paste into email</h2>
-      <p>Open your email client and paste the JSON below into the body.</p>
-      <p><button onclick="copyJson()">📋 Copy to clipboard</button></p>
-      <pre id="jsonout">${json.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</pre>
-      <h2>Option 3 — Open email client</h2>
-      <p><a href="mailto:?subject=CounselPlex%20User%20Study%20Responses&body=${mailBody}"><button class="secondary">✉️ Open email with responses pre-filled</button></a></p>
+      <p>You completed all ${SAMPLES.length} samples.</p>
+      <div id="submitStatus" class="audio-block" style="background:#fef3c7;border-color:#fbbf24">
+        <strong>⏳ Submitting your responses to the researcher…</strong>
+      </div>
+      <h2>Backup: manual submission</h2>
+      <p>If the automatic submission above fails, please use one of these options:</p>
+      <p><a href="${url}" download="${fname}"><button>📥 Download responses (.json)</button></a></p>
+      <p><button onclick="copyJson()">📋 Copy responses to clipboard</button></p>
+      <p><a href="mailto:?subject=CounselPlex%20User%20Study%20Responses&body=${mailBody}"><button class="secondary">✉️ Open email with responses</button></a></p>
+      <pre id="jsonout" style="max-height:200px">${json.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</pre>
     </div>
   `;
+  const ok = await autoSubmit(out);
+  const banner = document.getElementById('submitStatus');
+  if (ok === true) {
+    banner.style.background = '#d1fae5';
+    banner.style.borderColor = '#10b981';
+    banner.innerHTML = '<strong>✓ Responses submitted successfully — thank you!</strong><br>The researcher has been notified by email. You may now close this page.';
+  } else if (ok === false) {
+    banner.style.background = '#fee2e2';
+    banner.style.borderColor = '#ef4444';
+    banner.innerHTML = '<strong>⚠ Automatic submission failed.</strong><br>Please use one of the backup options below to send your responses.';
+  } else {
+    // null — auto-submit disabled
+    banner.style.background = '#fef3c7';
+    banner.style.borderColor = '#fbbf24';
+    banner.innerHTML = '<strong>📩 Please send your responses</strong> using one of the options below.';
+  }
 }
 
 function copyJson() {
