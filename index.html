@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CounselPlex Counseling Response Study</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    max-width: 720px; margin: 0 auto; padding: 24px;
+    line-height: 1.55; color: #222; background: #f7f7f9;
+  }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  h2 { font-size: 20px; margin: 16px 0 8px; }
+  .card {
+    background: white; border-radius: 12px; padding: 24px; margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+  .progress {
+    height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;
+    margin: 8px 0 16px;
+  }
+  .progress-bar { height: 100%; background: #4f46e5; transition: width 0.3s; }
+  .audio-block {
+    background: #f9fafb; border-radius: 8px; padding: 16px; margin: 12px 0;
+    border: 1px solid #e5e7eb;
+  }
+  .audio-block.selected { border-color: #4f46e5; background: #eef2ff; }
+  .audio-block label { font-weight: 600; font-size: 16px; display: block; margin-bottom: 8px; }
+  audio { width: 100%; }
+  .choice {
+    display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0;
+  }
+  .choice label {
+    flex: 1; min-width: 120px; padding: 12px; border: 2px solid #e5e7eb;
+    border-radius: 8px; cursor: pointer; text-align: center; user-select: none;
+    transition: all 0.15s;
+  }
+  .choice input { display: none; }
+  .choice label:has(input:checked) {
+    border-color: #4f46e5; background: #eef2ff; color: #4f46e5; font-weight: 600;
+  }
+  textarea, input[type=text], input[type=email] {
+    width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;
+    font-family: inherit; font-size: 14px;
+  }
+  textarea { min-height: 60px; resize: vertical; }
+  button {
+    background: #4f46e5; color: white; border: 0; padding: 12px 24px;
+    border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600;
+  }
+  button:hover { background: #4338ca; }
+  button:disabled { background: #d1d5db; cursor: not-allowed; }
+  .nav { display: flex; justify-content: space-between; margin-top: 24px; gap: 8px; }
+  .secondary { background: white; color: #4f46e5; border: 1px solid #4f46e5; }
+  .secondary:hover { background: #eef2ff; }
+  .note { color: #6b7280; font-size: 14px; margin: 8px 0; }
+  pre {
+    background: #1f2937; color: #d1fae5; padding: 16px; border-radius: 8px;
+    overflow-x: auto; font-size: 12px; max-height: 300px;
+  }
+  ol li { margin: 6px 0; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const SAMPLES = [
+  'S01_escot_test_54_t6',
+  'S02_escot_test_602_t3',
+  'S03_escot_test_301_t4',
+  'S04_escot_test_1298_t5',
+  'S05_escot_test_1326_t5',
+  'S06_escot_test_607_t6',
+  'S07_escot_test_1703_t7',
+  'S08_escot_test_1160_t6',
+  'S09_escot_test_765_t7',
+  'S10_escot_test_1554_t3',
+  'S11_escot_test_1596_t5',
+  'S12_escot_test_985_t5',
+  'S13_escot_test_275_t4',
+  'S14_esconv_766_t9',
+  'S15_escot_test_8_t5',
+  'S16_escot_test_259_t5',
+  'S17_escot_test_1611_t5',
+  'S18_escot_test_510_t6',
+  'S19_esconv_234_t9',
+  'S20_escot_test_1406_t7',
+];
+
+let state = {
+  page: 'intro',   // intro | sample | done
+  idx: 0,
+  participant: { name: '', email: '' },
+  responses: {},   // sample_id -> { choice, reason, ts }
+  startedAt: null,
+};
+
+const app = document.getElementById('app');
+
+function render() {
+  if (state.page === 'intro') return renderIntro();
+  if (state.page === 'sample') return renderSample();
+  if (state.page === 'done') return renderDone();
+}
+
+function renderIntro() {
+  app.innerHTML = `
+    <div class="card">
+      <h1>Counseling Response Quality Study</h1>
+      <p>Thank you for participating in this study on AI-generated counseling responses.</p>
+      <h2>What you'll do</h2>
+      <ol>
+        <li>You will hear <strong>${SAMPLES.length} short conversation snippets</strong> (~30–60 sec each).</li>
+        <li>Each snippet ends with two candidate counselor responses (A and B).</li>
+        <li>Choose which response is <strong>better overall</strong>: more empathic, more helpful, or feels more like a real counselor.</li>
+        <li>Both responses use the <strong>same voice</strong> — please judge by <em>content, timing, and responsiveness</em>, not voice quality.</li>
+        <li>Optionally provide a brief reason for your choice.</li>
+      </ol>
+      <p class="note">Estimated time: <strong>30–45 minutes</strong>. Your responses are anonymous and used only for academic research.</p>
+      <h2>Participant info (optional)</h2>
+      <p>
+        <label>Name or identifier:<br>
+          <input type="text" id="pname" placeholder="e.g., P01 or your initials">
+        </label>
+      </p>
+      <p>
+        <label>Email (if you want updates):<br>
+          <input type="email" id="pemail" placeholder="optional@example.com">
+        </label>
+      </p>
+      <div class="nav">
+        <span></span>
+        <button onclick="startStudy()">Start study →</button>
+      </div>
+    </div>
+  `;
+}
+
+function startStudy() {
+  state.participant.name = document.getElementById('pname').value;
+  state.participant.email = document.getElementById('pemail').value;
+  state.startedAt = new Date().toISOString();
+  state.page = 'sample';
+  state.idx = 0;
+  render();
+  window.scrollTo(0,0);
+}
+
+function renderSample() {
+  const sid = SAMPLES[state.idx];
+  const r = state.responses[sid] || {};
+  const pct = (state.idx / SAMPLES.length) * 100;
+  app.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h1>Sample ${state.idx + 1} of ${SAMPLES.length}</h1>
+        <span class="note">${sid}</span>
+      </div>
+      <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
+      <p class="note">Listen to both A and B (in any order, as many times as you like), then pick which is better.</p>
+
+      <div class="audio-block">
+        <label>Response A</label>
+        <audio controls preload="metadata" src="audio_ab/${sid}/A.wav"></audio>
+      </div>
+      <div class="audio-block">
+        <label>Response B</label>
+        <audio controls preload="metadata" src="audio_ab/${sid}/B.wav"></audio>
+      </div>
+
+      <h2>Which response is better overall?</h2>
+      <div class="choice">
+        <label><input type="radio" name="choice" value="A" ${r.choice==='A'?'checked':''}>A is better</label>
+        <label><input type="radio" name="choice" value="B" ${r.choice==='B'?'checked':''}>B is better</label>
+        <label><input type="radio" name="choice" value="same" ${r.choice==='same'?'checked':''}>About the same</label>
+      </div>
+
+      <p><label>Brief reason (optional):<br>
+        <textarea id="reason" placeholder="e.g., A was more empathic / B was on-topic">${r.reason||''}</textarea>
+      </label></p>
+
+      <div class="nav">
+        <button class="secondary" onclick="back()" ${state.idx===0?'disabled':''}>← Back</button>
+        <button onclick="next()">${state.idx === SAMPLES.length-1 ? 'Submit responses →' : 'Next →'}</button>
+      </div>
+    </div>
+  `;
+}
+
+function saveCurrent() {
+  const choice = document.querySelector('input[name=choice]:checked');
+  const reason = document.getElementById('reason').value;
+  const sid = SAMPLES[state.idx];
+  if (!choice) return false;
+  state.responses[sid] = { choice: choice.value, reason: reason.trim(), ts: Date.now() };
+  return true;
+}
+
+function next() {
+  if (!saveCurrent()) {
+    alert('Please choose A, B, or "About the same" before continuing.');
+    return;
+  }
+  if (state.idx === SAMPLES.length - 1) {
+    state.page = 'done';
+  } else {
+    state.idx += 1;
+  }
+  render();
+  window.scrollTo(0,0);
+}
+
+function back() {
+  // save current if possible (silently)
+  const choice = document.querySelector('input[name=choice]:checked');
+  if (choice) saveCurrent();
+  if (state.idx > 0) state.idx -= 1;
+  render();
+  window.scrollTo(0,0);
+}
+
+function renderDone() {
+  const out = {
+    participant: state.participant,
+    started_at: state.startedAt,
+    completed_at: new Date().toISOString(),
+    responses: state.responses,
+  };
+  const json = JSON.stringify(out, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const fname = `userstudy_${(state.participant.name||'anon').replace(/[^a-zA-Z0-9]/g,'_')}_${Date.now()}.json`;
+  // also build mailto body (truncated if too long)
+  const mailBody = encodeURIComponent('Please find my user study responses attached, or pasted below:\n\n' + json);
+  app.innerHTML = `
+    <div class="card">
+      <h1>✓ Thank you!</h1>
+      <p>You completed all ${SAMPLES.length} samples. Please <strong>send your responses</strong> using one of these options:</p>
+      <h2>Option 1 — Download and email</h2>
+      <p>Download the file below, then email it as an attachment to the researcher.</p>
+      <p><a href="${url}" download="${fname}"><button>📥 Download my responses (.json)</button></a></p>
+      <h2>Option 2 — Paste into email</h2>
+      <p>Open your email client and paste the JSON below into the body.</p>
+      <p><button onclick="copyJson()">📋 Copy to clipboard</button></p>
+      <pre id="jsonout">${json.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</pre>
+      <h2>Option 3 — Open email client</h2>
+      <p><a href="mailto:?subject=CounselPlex%20User%20Study%20Responses&body=${mailBody}"><button class="secondary">✉️ Open email with responses pre-filled</button></a></p>
+    </div>
+  `;
+}
+
+function copyJson() {
+  const text = document.getElementById('jsonout').innerText;
+  navigator.clipboard.writeText(text).then(()=>alert('Copied!'));
+}
+
+render();
+</script>
+</body>
+</html>
