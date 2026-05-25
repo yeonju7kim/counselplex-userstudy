@@ -121,14 +121,14 @@ function renderIntro() {
         <li>Optionally provide a brief reason for your choice.</li>
       </ol>
       <p class="note">Estimated time: <strong>30–45 minutes</strong>. Your responses are anonymous and used only for academic research.</p>
-      <h2>Participant info (optional)</h2>
+      <h2>Participant info</h2>
       <p>
-        <label>Name or identifier:<br>
-          <input type="text" id="pname" placeholder="e.g., P01 or your initials">
+        <label>Name or identifier <span style="color:#dc2626">*required</span><br>
+          <input type="text" id="pname" placeholder="e.g., Prolific ID, P01, or your initials" required>
         </label>
       </p>
       <p>
-        <label>Email (if you want updates):<br>
+        <label>Email <span style="color:#6b7280">(optional, if you want updates)</span><br>
           <input type="email" id="pemail" placeholder="optional@example.com">
         </label>
       </p>
@@ -141,8 +141,14 @@ function renderIntro() {
 }
 
 function startStudy() {
-  state.participant.name = document.getElementById('pname').value;
-  state.participant.email = document.getElementById('pemail').value;
+  const name = document.getElementById('pname').value.trim();
+  if (!name) {
+    alert('Please enter your name or identifier (e.g., your Prolific ID) before starting.');
+    document.getElementById('pname').focus();
+    return;
+  }
+  state.participant.name = name;
+  state.participant.email = document.getElementById('pemail').value.trim();
   state.startedAt = new Date().toISOString();
   state.page = 'sample';
   state.idx = 0;
