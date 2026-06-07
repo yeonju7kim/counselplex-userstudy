@@ -91,7 +91,7 @@ const SAMPLES = [
 ];
 
 let state = {
-  page: 'intro',   // intro | sample | done
+  page: 'intro',   // intro | consent | sample | done
   idx: 0,
   participant: { name: '', email: '' },
   responses: {},   // sample_id -> { choice, reason, ts }
@@ -102,8 +102,15 @@ const app = document.getElementById('app');
 
 function render() {
   if (state.page === 'intro') return renderIntro();
+  if (state.page === 'consent') return renderConsent();
   if (state.page === 'sample') return renderSample();
   if (state.page === 'done') return renderDone();
+}
+
+function goToConsent() {
+  state.page = 'consent';
+  render();
+  window.scrollTo(0,0);
 }
 
 function renderIntro() {
@@ -121,9 +128,22 @@ function renderIntro() {
         <li>Optionally provide a brief reason for your choice.</li>
       </ol>
       <p class="note">Estimated time: <strong>30–45 minutes</strong>. Your responses are anonymous and used only for academic research.</p>
+      <p class="note">On the next page you will review the consent information and provide your participant identifier before starting.</p>
+      <div class="nav">
+        <span></span>
+        <button onclick="goToConsent()">Continue →</button>
+      </div>
+    </div>
+  `;
+}
 
-      <h2>Informed Consent</h2>
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.55">
+function renderConsent() {
+  app.innerHTML = `
+    <div class="card">
+      <h1>Informed Consent</h1>
+      <p class="note">Please read the information below carefully before agreeing to participate.</p>
+
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.6">
         <p><strong>Purpose.</strong> You are invited to take part in an academic research study evaluating the quality of counseling responses produced by an AI dialogue model. The goal is to compare candidate responses to determine which feels more empathic and helpful to listeners.</p>
         <p><strong>Procedures.</strong> You will listen to ${SAMPLES.length} short audio snippets and, for each, choose between two candidate responses (A or B, or "about the same") and optionally write a brief reason. The session takes approximately 30–45 minutes.</p>
         <p><strong>Voluntary participation.</strong> Your participation is entirely voluntary. You may skip any question and withdraw at any time without penalty by simply closing the browser; partial responses will not be transmitted.</p>
@@ -132,7 +152,8 @@ function renderIntro() {
         <p><strong>Contact.</strong> If you have questions about this research, please contact the research team. Questions about your rights as a research participant may be directed to the Institutional Review Board (IRB) overseeing this study.</p>
         <p><strong>Consent in lieu of signature.</strong> Because this study is conducted entirely online, a physical (handwritten) signature cannot be collected. By checking the box below and clicking "Start study", you confirm that you have read and understood the information above, that you are at least 18 years of age, and that you agree to participate. This action serves as your written informed consent.</p>
       </div>
-      <p style="margin-top:14px">
+
+      <p style="margin-top:16px">
         <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;user-select:none">
           <input type="checkbox" id="consent" onchange="document.getElementById('startBtn').disabled = !this.checked" style="margin-top:4px">
           <span><strong>I have read and understood the information above, I am at least 18 years old, and I agree to participate.</strong></span>
@@ -151,7 +172,7 @@ function renderIntro() {
         </label>
       </p>
       <div class="nav">
-        <span></span>
+        <button class="secondary" onclick="state.page='intro'; render(); window.scrollTo(0,0)">← Back</button>
         <button id="startBtn" onclick="startStudy()" disabled>Start study →</button>
       </div>
     </div>
