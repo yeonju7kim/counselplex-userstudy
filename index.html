@@ -93,7 +93,7 @@ const SAMPLES = [
 let state = {
   page: 'intro',   // intro | consent | sample | done
   idx: 0,
-  participant: { name: '', email: '' },
+  participant: { name: '' },
   responses: {},   // sample_id -> { choice, reason, ts }
   startedAt: null,
 };
@@ -166,11 +166,6 @@ function renderConsent() {
           <input type="text" id="pname" placeholder="e.g., Prolific ID, P01, or your initials" required>
         </label>
       </p>
-      <p>
-        <label>Email <span style="color:#6b7280">(optional, if you want updates)</span><br>
-          <input type="email" id="pemail" placeholder="optional@example.com">
-        </label>
-      </p>
       <div class="nav">
         <button class="secondary" onclick="state.page='intro'; render(); window.scrollTo(0,0)">← Back</button>
         <button id="startBtn" onclick="startStudy()" disabled>Start study →</button>
@@ -194,7 +189,6 @@ function startStudy() {
   }
   state.participant.name = name;
   state.consentedAt = new Date().toISOString();
-  state.participant.email = document.getElementById('pemail').value.trim();
   state.startedAt = new Date().toISOString();
   state.page = 'sample';
   state.idx = 0;
@@ -288,7 +282,7 @@ async function autoSubmit(out) {
         access_key: WEB3FORMS_KEY,
         subject: `CounselPlex study — ${out.participant.name || 'anonymous'}`,
         from_name: out.participant.name || "Anonymous participant",
-        email: out.participant.email || "anonymous@example.com",
+        email: "anonymous@example.com",
         message: JSON.stringify(out, null, 2),
       })
     });
